@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Smart Grocery System</title>
+
+<style>
+body {
+    font-family: Arial;
+    background: linear-gradient(to right,#667eea,#764ba2);
+    padding: 20px;
+    color: white;
+}
+
+h2 {
+    text-align: center;
+}
+
+/* CARD */
+.card {
+    background: white;
+    color: black;
+    padding: 15px;
+    border-radius: 10px;
+    margin: 10px auto;
+    width: 90%;
+}
+
+/* INPUT */
+input, button {
+    padding: 10px;
+    margin: 5px;
+    border-radius: 5px;
+    border: none;
+}
+
+button {
+    background: black;
+    color: white;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #333;
+}
+
+/* TABLE */
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th {
+    background: black;
+    color: white;
+}
+
+th, td {
+    padding: 10px;
+    text-align: center;
+    border: 1px solid #ddd;
+}
+
+/* STATUS COLORS */
+.Expired {background:#ffcccc;}
+.Safe {background:#ccffcc;}
+.Near {background:#fff0b3;}
+
+.alert-box {
+    padding: 10px;
+    border-radius: 5px;
+    margin: 5px;
+}
+
+.red {background:#ff4d4d; color:white;}
+.orange {background:#ffa500;}
+.green {background:#4CAF50; color:white;}
+
+.stats {
+    display:flex;
+    justify-content: space-around;
+    margin-bottom:10px;
+}
+
+.stat {
+    background:white;
+    color:black;
+    padding:10px;
+    border-radius:10px;
+    width:30%;
+    text-align:center;
+}
+</style>
+
+</head>
+<body>
+
+<h2>Smart Grocery Expiry System</h2>
+
+<div class="card">
+
+<!-- STATS -->
+<div class="stats">
+<div class="stat">Total<br><span id="total">0</span></div>
+<div class="stat">Expired<br><span id="expired">0</span></div>
+<div class="stat">Near<br><span id="near">0</span></div>
+</div>
+
+<!-- ADD -->
+<input id="name" placeholder="Product Name">
+<input id="qty" type="number" placeholder="Quantity">
+<input id="exp" type="date">
+<button onclick="addProduct()">Add Product</button>
+
+</div>
+
+<div class="card">
+<h3>Notifications</h3>
+<div id="alerts"></div>
+</div>
+
+<div class="card">
+<table id="table">
+<tr>
+<th>Name</th>
+<th>Qty</th>
+<th>Expiry</th>
+<th>Status</th>
+<th>Action</th>
+</tr>
+</table>
+</div>
+
+<!-- SOUND -->
+<audio id="sound">
+<source src="https://www.soundjay.com/button/beep-07.wav">
+</audio>
+
+<script>
+
+let products = JSON.parse(localStorage.getItem("products")) || [];
+let alerted = false;
+
+function addProduct(){
+    let name = document.getElementById("name").value;
+    let qty = document.getElementById("qty").value;
+    let exp = document.getElementById("exp").value;
+
+    if(!name || !qty || !exp){
+        alert("Fill all fields");
+        return;
+    }
+
+    products.push({name,qty,exp});
+    localStorage.setItem("products", JSON.stringify(products));
+
+    updateUI();
+}
+
+function deleteItem(i){
+    products.splice(i,1);
+    localStorage.setItem("products", JSON.stringify(products));
+    updateUI();
+}
+
+function updateUI(){
+
+    let table = document.getElementById("table");
+    let alerts = document.getElementById("alerts");
+    let sound = document.getElementById("sound");
+
+    let total=0, expired=0, near=0;
+
+    table.innerHTML = `
+    <tr>
+    <th>Name</th><th>Qty</th><th>Expiry</th><th>Status</th><th>Action</th>
+    </tr>`;
+
+    alerts.innerHTML = "";
+
+    let today = new Date();
+
+    products.forEach((p,i)=>{
+        total++;
+
+        let diff = (new Date(p.exp)-today)/(1000*60*60*24);
+
+        let status="Safe", cls="Safe";
+
+        if(diff < 0){
+            status="Expired";
+            cls="Expired";
+            expired++;
+
+            alerts.innerHTML += `<div class="alert-box red">${p.name} expired!</div>`;
+        }
+        else if(diff <= 2){
+            status="Near Expiry";
+            cls="Near";
+            near++;
+
+            alerts.innerHTML += `<div class="alert-box orange">${p.name} expiring soon!</div>`;
+        }
+
+        table.innerHTML += `
+        <tr class="${cls}">
+        <td>${p.name}</td>
+        <td>${p.qty}</td>
+        <td>${p.exp}</td>
+        <td>${status}</td>
+        <td>
+        <button onclick="deleteItem(${i})">Remove</button>
+        </td>
+        </tr>`;
+    });
+
+    // UPDATE STATS
+    document.getElementById("total").innerText = total;
+    document.getElementById("expired").innerText = expired;
+    document.getElementById("near").innerText = near;
+
+    // SOUND ONLY ONCE
+    if((expired>0 || near>0) && !alerted){
+        sound.play();
+        alerted = true;
+    }
+}
+
+// AUTO REFRESH
+setInterval(updateUI, 5000);
+
+// INITIAL LOAD
+updateUI();
+
+</script>
+
+</body>
+</html>
